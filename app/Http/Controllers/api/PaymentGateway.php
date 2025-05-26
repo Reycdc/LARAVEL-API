@@ -111,10 +111,10 @@ class PaymentGateway extends Controller
 
     
 }
-Public function CekStatusTransaksi(){
+Public function CekStatusTransaksi(Request $request){
         // Implementasi untuk cek status transaksi
         try {
-            
+            $reference_code = 
             
             $invoice = request()->input('invoice');
             if (!$invoice) {

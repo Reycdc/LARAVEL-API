@@ -7,6 +7,8 @@ use App\Utils\tripay;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+// use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class PaymentGateway extends Controller
 {
@@ -64,7 +66,7 @@ class PaymentGateway extends Controller
                 'name' => $product->name,
                 'price' => $product->price,
                 'quantity' => $item['quantity'],
-                'product_url' => 'https://tokokamu.com/product/' . $product->slug,
+                // 'product_url' => 'https://tokokamu.com/product/' . $product->slug,
                 // 'image_url' => $product->images->first()->image_url ?? 'https://tokokamu.com/default.jpg',
             ];
         }
@@ -84,11 +86,11 @@ class PaymentGateway extends Controller
             'customer_phone' => $user->phone,
             'order_items' => $orderItems,
             'return_url' => 'https://domainanda.com/redirect',
-            'expired_time' => time() + 24 * 60 * 60,
+            'expired_time' => time() + 24 * 60 * 60, // 24 jam
             'signature' => $this->paymentGateway->getSignature(),
         ];
 
-        // Kirim ke Tripay API
+        
         $http = new \GuzzleHttp\Client();    
         $response = $http->post('https://tripay.co.id/api-sandbox/transaction/create', [
             'headers' => [
@@ -99,7 +101,7 @@ class PaymentGateway extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Transaction created successfully',
+            'message' => 'Transaksi berhasil dibuat',
             'data' => json_decode($response->getBody()->getContents(), true),
         ]);
     } catch (\Throwable $th) {
@@ -111,37 +113,93 @@ class PaymentGateway extends Controller
 
     
 }
-Public function CekStatusTransaksi(Request $request){
-        // Implementasi untuk cek status transaksi
-        try {
-            $reference_code = 
-            
-            $invoice = request()->input('invoice');
-            if (!$invoice) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Invoice is required',
-                ], 422);
-            }
 
-            $tripayToken = env('TRIPAY_API_KEY');
-            $http = new \GuzzleHttp\Client();
-            $response = $http->get("https://tripay.co.id/api-sandbox/transaction/status/{$invoice}", [
-                'headers' => [
-                    'Authorization' => 'Bearer '. $tripayToken,
-                ],
-            ]);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Transaction status retrieved successfully',
-                'data' => json_decode($response->getBody()->getContents(), true),
-            ]);
-        } catch (\Throwable $th) {
+public function CekDetailTransaksi(Request $request)
+{
+    try {
+        $reference = $request->input('reference');
+
+        if (!$reference) {
             return response()->json([
                 'status' => false,
-                'message' => $th->getMessage(),
+                'message' => 'Kode Referensi diperlukan',
+            ], 422);
+        }
+
+        $tripayToken = env('TRIPAY_API_KEY');
+        $endpoint = 'https://tripay.co.id/api-sandbox/transaction/detail';
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $tripayToken,
+        ])->get($endpoint, [
+            'reference' => $reference,
+        ]);
+
+        if ($response->successful()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Status transaksi berhasil diambil',
+                'data' => $response->json(),
             ]);
         }
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Gagal mengambil status transaksi',
+            'data' => $response->json(),
+        ], $response->status());
+    } catch (\Throwable $th) {
+        return response()->json([
+            'status' => false,
+            'message' => $th->getMessage(),
+        ], 500);
     }
+}
+
+public function CekStatusPembayaran(Request $request)
+{
+    try {
+        $reference = $request->input('reference');
+
+        if (!$reference) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Kode Referensi diperlukan',
+            ], 422);
+        }
+
+        $tripayToken = env('TRIPAY_API_KEY');
+        $endpoint = 'https://tripay.co.id/api-sandbox/transaction/detail';
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $tripayToken,
+        ])->get($endpoint, [
+            'reference' => $reference,
+        ]);
+
+        if ($response->successful()) {
+            $status = $response->json('data.status');
+            $status = $status === 'PAID' ? 'Lunas' : ($status === 'EXPIRED' ? 'Kedaluwarsa' : ($status === 'PENDING' ? 'Menunggu Pembayaran' : 'Gagal'));
+            return response()->json([
+                'status' => true,
+                'message' => 'Status pembayaran berhasil diambil',
+                'data' => $status,
+            ]);
+        }
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Gagal mengambil status pembayaran',
+            'data' => $response->json(),
+        ], $response->status());
+    } catch (\Throwable $th) {
+        return response()->json([
+            'status' => false,
+            'message' => $th->getMessage(),
+        ], 500);
+    }
+
+}
+
 }

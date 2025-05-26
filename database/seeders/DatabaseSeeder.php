@@ -14,12 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::factory(10)->create();
 
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
 
 
         $admin = Role::create(['name' => 'admin']);
@@ -41,5 +42,12 @@ class DatabaseSeeder extends Seeder
         $customer->givePermissionTo('manage profile');
 
        
+                $this->call([
+                    // RoleSeeder::class,
+                    UserSeeder::class,
+                    CategorySeeder::class,
+                    ProductSeeder::class,
+                ]);
+
     }
 }

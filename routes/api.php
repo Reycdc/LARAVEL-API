@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use App\Http\Controllers\PaymentGateway;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\AuthenticationController;
 use App\Http\Controllers\api\RoleController;
@@ -35,3 +36,11 @@ Route::prefix('product')->middleware('auth:sanctum')->group(function(){
     Route::post('/update',[ProductController::class, 'update'])->middleware('role:admin|super-admin');
     Route::delete('/delete',[Productcontroller::class, 'delete'])->middleware(('role:admin|super-admin'));
 });
+
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+
+Route::post('/payment-gateway/store', [\App\Http\Controllers\Api\PaymentGateway::class, 'store'])->middleware('auth:sanctum', 'role:admin|super-admin|customer');
